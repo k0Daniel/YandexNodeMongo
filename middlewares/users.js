@@ -1,7 +1,9 @@
 const users = require('../models/user');
+const bcrypt = require('bcryptjs');
 
 const findAllUsers = async (req, res, next) => {
-	req.usersArray = await users.find({});
+	console.log('GET /api/users');
+	req.usersArray = await users.find({}, { password: 0 });
 	next();
 };
 const checkIsUserExists = async (req, res, next) => {
@@ -16,26 +18,13 @@ const checkIsUserExists = async (req, res, next) => {
 	}
 };
 
-const createUser = async (req, res, next) => {
-	console.log('POST /users');
-	try {
-		console.log(req.body);
-		req.user = await users.create(req.body);
-		next();
-	} catch (error) {
-		res.setHeader('Content-Type', 'application/json');
-		res.status(400).send(JSON.stringify({ message: 'Ошибка создания пользователя' }));
-	}
-};
-
 const findUserById = async (req, res, next) => {
-	console.log('GET /users/:id');
+	console.log('GET /api/users/:id');
 	try {
-		req.user = await users.findById(req.params.id);
+		req.user = await users.findById(req.params.id, { password: 0 });
 		next();
 	} catch (error) {
-		res.setHeader('Content-Type', 'application/json');
-		res.status(404).send(JSON.stringify({ message: 'Пользователь не найден' }));
+		res.status(404).send('User not found');
 	}
 };
 const updateUser = async (req, res, next) => {
@@ -72,6 +61,25 @@ const checkEmptyNameAndEmail = async (req, res, next) => {
 		next();
 	}
 };
+
+const hashPassword = async (req, res, next) => {
+	try {
+		const salt = await bcrypt.genSalt(10);
+		const hash = await bcrypt.hash(req.body.password, salt);
+		req.body.password = hash;
+		next();
+	} catch (error) {
+		res.status(400).send({ message: 'Ошибка хеширования пароля' });
+	}
+};
+const createUser = async (req, res, next) => {
+	try {
+		req.user = await users.create(req.body);
+		next();
+	} catch (error) {
+		res.status(400).send('Ошибка при создании пользователя');
+	}
+};
 module.exports = {
 	findAllUsers,
 	createUser,
@@ -80,5 +88,6 @@ module.exports = {
 	deleteUser,
 	checkEmptyNameAndEmailAndPassword,
 	checkEmptyNameAndEmail,
-	checkIsUserExists
+	checkIsUserExists,
+	hashPassword
 };
